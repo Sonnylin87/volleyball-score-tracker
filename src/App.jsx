@@ -54,7 +54,7 @@ const STYLES = `
 
 .vb-empty { text-align: center; padding: 60px 20px; color: var(--muted); border: 1.5px dashed rgba(246,243,234,0.18); border-radius: 14px; }
 
-.vb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 18px; margin-bottom: 26px; }
+.vb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 18px; margin-bottom: 26px; }
 
 .vb-card { background: linear-gradient(160deg, var(--court-navy-2), var(--court-navy-3)); border: 1.5px solid rgba(246,243,234,0.14); border-radius: 16px; padding: 18px; position: relative; box-shadow: 0 8px 20px rgba(0,0,0,0.25); }
 
@@ -69,15 +69,27 @@ const STYLES = `
 .vb-score-num { font-family: 'Oswald', sans-serif; font-size: 46px; font-weight: 700; line-height: 1; color: var(--ball-yellow); font-variant-numeric: tabular-nums; }
 .vb-score-label { font-size: 10.5px; letter-spacing: 2px; color: var(--muted); margin-top: 2px; }
 
-.vb-stat { display: flex; align-items: center; justify-content: space-between; padding: 7px 2px; border-top: 1px solid rgba(246,243,234,0.08); }
-.vb-stat:first-of-type { border-top: none; }
+.vb-stat-group { margin-bottom: 6px; }
+.vb-stat-group-title { font-size: 11px; letter-spacing: 1.5px; color: var(--muted); margin: 14px 0 4px; text-transform: uppercase; }
+.vb-stat-group-title:first-child { margin-top: 0; }
+.vb-stat-group-title.score-title { color: var(--ball-blue); }
+.vb-stat-group-title.error-title { color: var(--error-red); }
+
+.vb-stat { display: flex; align-items: center; justify-content: space-between; padding: 6px 2px; border-top: 1px solid rgba(246,243,234,0.08); }
+.vb-stat-group .vb-stat:first-of-type { border-top: none; }
 
 .vb-stat-label { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--line-white); }
 .vb-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 .dot-point { background: var(--ball-blue); }
 .dot-attack { background: var(--ball-yellow); }
+.dot-serve-point { background: #6bd4a8; }
+.dot-block { background: #b58af5; }
 .dot-error { background: var(--error-red); }
-.dot-serve { background: var(--serve-amber); }
+.dot-attack-err { background: #c23f6b; }
+.dot-serve-err { background: var(--serve-amber); }
+.dot-reception { background: #e58fd0; }
+.dot-set { background: #f2c85c; }
+.dot-net { background: #d97757; }
 
 .vb-stat-ctrl { display: flex; align-items: center; gap: 8px; }
 .vb-count { min-width: 20px; text-align: center; font-family: 'Oswald', sans-serif; font-size: 15px; font-variant-numeric: tabular-nums; }
@@ -88,8 +100,14 @@ const STYLES = `
 .vb-btn-minus:hover { background: rgba(246,243,234,0.22); }
 .vb-btn-plus.point { background: var(--ball-blue); color: #0e2a3f; }
 .vb-btn-plus.attack { background: var(--ball-yellow); color: #0e2a3f; }
+.vb-btn-plus.serve-point { background: #6bd4a8; color: #0e2a3f; }
+.vb-btn-plus.block { background: #b58af5; color: #0e2a3f; }
 .vb-btn-plus.error { background: var(--error-red); color: #fff; }
-.vb-btn-plus.serve { background: var(--serve-amber); color: #0e2a3f; }
+.vb-btn-plus.attack-err { background: #c23f6b; color: #fff; }
+.vb-btn-plus.serve-err { background: var(--serve-amber); color: #0e2a3f; }
+.vb-btn-plus.reception { background: #e58fd0; color: #0e2a3f; }
+.vb-btn-plus.set { background: #f2c85c; color: #0e2a3f; }
+.vb-btn-plus.net { background: #d97757; color: #fff; }
 .vb-btn-plus:hover { filter: brightness(1.1); }
 
 .vb-footer { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; }
@@ -101,15 +119,38 @@ const STYLES = `
 .vb-clear:hover { background: rgba(147,174,189,0.12); }
 `;
 
-const STAT_CONFIG = [
+// 得分類統計
+const SCORE_STATS = [
   { key: "points", label: "得分", dot: "dot-point", btn: "point" },
   { key: "attackPoints", label: "攻擊得分", dot: "dot-attack", btn: "attack" },
-  { key: "errors", label: "失誤", dot: "dot-error", btn: "error", negative: true },
-  { key: "serveErrors", label: "發球失誤", dot: "dot-serve", btn: "serve", negative: true },
+  { key: "servePoints", label: "發球得分", dot: "dot-serve-point", btn: "serve-point" },
+  { key: "blockPoints", label: "攔網得分", dot: "dot-block", btn: "block" },
 ];
 
+// 失誤類統計
+const ERROR_STATS = [
+  { key: "errors", label: "失誤", dot: "dot-error", btn: "error" },
+  { key: "attackErrors", label: "攻擊失誤", dot: "dot-attack-err", btn: "attack-err" },
+  { key: "serveErrors", label: "發球失誤", dot: "dot-serve-err", btn: "serve-err" },
+  { key: "receptionErrors", label: "接球失誤", dot: "dot-reception", btn: "reception" },
+  { key: "settingErrors", label: "舉球失誤", dot: "dot-set", btn: "set" },
+  { key: "netErrors", label: "觸網失誤", dot: "dot-net", btn: "net" },
+];
+
+const ALL_STATS = [...SCORE_STATS, ...ERROR_STATS];
+
+function emptyStats() {
+  const stats = {};
+  ALL_STATS.forEach((s) => {
+    stats[s.key] = 0;
+  });
+  return stats;
+}
+
 function calcTotal(p) {
-  return p.points + p.attackPoints - p.errors - p.serveErrors;
+  const scoreSum = SCORE_STATS.reduce((sum, s) => sum + (p[s.key] || 0), 0);
+  const errorSum = ERROR_STATS.reduce((sum, s) => sum + (p[s.key] || 0), 0);
+  return scoreSum - errorSum;
 }
 
 function loadInitialPlayers() {
@@ -117,7 +158,9 @@ function loadInitialPlayers() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
+    if (!Array.isArray(parsed)) return [];
+    // 補上舊資料可能缺少的新欄位，避免升級後出現 undefined
+    return parsed.map((p) => ({ ...emptyStats(), ...p }));
   } catch (err) {
     console.error("讀取本機儲存的資料失敗", err);
     return [];
@@ -149,16 +192,15 @@ export default function VolleyballScoreTracker() {
       {
         id: idCounter.current,
         name,
-        points: 0,
-        attackPoints: 0,
-        errors: 0,
-        serveErrors: 0,
+        ...emptyStats(),
       },
     ]);
     setNameInput("");
   };
 
-  const removePlayer = (id) => {
+  const removePlayer = (id, name) => {
+    const ok = window.confirm(`確定要刪除球員「${name}」嗎？他的所有紀錄將一併刪除，這個動作無法復原。`);
+    if (!ok) return;
     setPlayers((prev) => prev.filter((p) => p.id !== id));
   };
 
@@ -171,15 +213,7 @@ export default function VolleyballScoreTracker() {
   };
 
   const resetAll = () => {
-    setPlayers((prev) =>
-      prev.map((p) => ({
-        ...p,
-        points: 0,
-        attackPoints: 0,
-        errors: 0,
-        serveErrors: 0,
-      }))
-    );
+    setPlayers((prev) => prev.map((p) => ({ ...p, ...emptyStats() })));
   };
 
   const clearAllData = () => {
@@ -199,21 +233,15 @@ export default function VolleyballScoreTracker() {
     const dateStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
     const timeStr = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
 
-    const header = ["球員", "得分", "攻擊得分", "失誤", "發球失誤", "總分"];
+    const header = ["球員", ...ALL_STATS.map((s) => s.label), "總分"];
     const rows = players.map((p) => [
       p.name,
-      p.points,
-      p.attackPoints,
-      p.errors,
-      p.serveErrors,
+      ...ALL_STATS.map((s) => p[s.key] || 0),
       calcTotal(p),
     ]);
     const totalRow = [
       "全隊總分",
-      players.reduce((s, p) => s + p.points, 0),
-      players.reduce((s, p) => s + p.attackPoints, 0),
-      players.reduce((s, p) => s + p.errors, 0),
-      players.reduce((s, p) => s + p.serveErrors, 0),
+      ...ALL_STATS.map((s) => players.reduce((sum, p) => sum + (p[s.key] || 0), 0)),
       teamTotal,
     ];
 
@@ -247,7 +275,7 @@ export default function VolleyballScoreTracker() {
             <div className="vb-ball" />
             <div>
               <h1 className="vb-title">排球隊得分紀錄板</h1>
-              <div className="vb-subtitle">記錄每位球員的得分、攻擊、失誤與發球失誤・資料會自動儲存在此裝置</div>
+              <div className="vb-subtitle">記錄每位球員的得分與失誤數據・資料會自動儲存在此裝置</div>
             </div>
           </div>
           <div className="vb-team-total">
@@ -282,7 +310,7 @@ export default function VolleyballScoreTracker() {
                   <div className="vb-name">{p.name}</div>
                   <button
                     className="vb-del"
-                    onClick={() => removePlayer(p.id)}
+                    onClick={() => removePlayer(p.id, p.name)}
                     title="刪除球員"
                   >
                     ×
@@ -294,29 +322,59 @@ export default function VolleyballScoreTracker() {
                   <div className="vb-score-label">總分</div>
                 </div>
 
-                {STAT_CONFIG.map((s) => (
-                  <div className="vb-stat" key={s.key}>
-                    <div className="vb-stat-label">
-                      <span className={`vb-dot ${s.dot}`} />
-                      {s.label}
+                <div className="vb-stat-group">
+                  <div className="vb-stat-group-title score-title">得分</div>
+                  {SCORE_STATS.map((s) => (
+                    <div className="vb-stat" key={s.key}>
+                      <div className="vb-stat-label">
+                        <span className={`vb-dot ${s.dot}`} />
+                        {s.label}
+                      </div>
+                      <div className="vb-stat-ctrl">
+                        <button
+                          className="vb-btn vb-btn-minus"
+                          onClick={() => changeStat(p.id, s.key, -1)}
+                        >
+                          −
+                        </button>
+                        <span className="vb-count">{p[s.key] || 0}</span>
+                        <button
+                          className={`vb-btn vb-btn-plus ${s.btn}`}
+                          onClick={() => changeStat(p.id, s.key, 1)}
+                        >
+                          ＋
+                        </button>
+                      </div>
                     </div>
-                    <div className="vb-stat-ctrl">
-                      <button
-                        className="vb-btn vb-btn-minus"
-                        onClick={() => changeStat(p.id, s.key, -1)}
-                      >
-                        −
-                      </button>
-                      <span className="vb-count">{p[s.key]}</span>
-                      <button
-                        className={`vb-btn vb-btn-plus ${s.btn}`}
-                        onClick={() => changeStat(p.id, s.key, 1)}
-                      >
-                        ＋
-                      </button>
+                  ))}
+                </div>
+
+                <div className="vb-stat-group">
+                  <div className="vb-stat-group-title error-title">失誤</div>
+                  {ERROR_STATS.map((s) => (
+                    <div className="vb-stat" key={s.key}>
+                      <div className="vb-stat-label">
+                        <span className={`vb-dot ${s.dot}`} />
+                        {s.label}
+                      </div>
+                      <div className="vb-stat-ctrl">
+                        <button
+                          className="vb-btn vb-btn-minus"
+                          onClick={() => changeStat(p.id, s.key, -1)}
+                        >
+                          −
+                        </button>
+                        <span className="vb-count">{p[s.key] || 0}</span>
+                        <button
+                          className={`vb-btn vb-btn-plus ${s.btn}`}
+                          onClick={() => changeStat(p.id, s.key, 1)}
+                        >
+                          ＋
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             ))}
           </div>
