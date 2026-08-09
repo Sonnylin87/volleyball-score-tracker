@@ -21,5 +21,5 @@ export const firebaseConfig = {
   projectId: "volleyball-score-e4d36",
   storageBucket: "volleyball-score-e4d36.firebasestorage.app",
   messagingSenderId: "134394496280",
-  appId: "1:134394496280:web:74c379dce22c1df1504a6d",
+  appId: "1:134394496280:web:4545e638e37a21bb504a6d",
 };
