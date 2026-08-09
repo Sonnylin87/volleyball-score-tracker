@@ -1,4 +1,6 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
+
+const STORAGE_KEY = "volleyball-score-tracker-data";
 
 const STYLES = `
 @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Noto+Sans+TC:wght@400;500;600;700;900&display=swap');
@@ -95,6 +97,8 @@ const STYLES = `
 .vb-reset:hover { background: rgba(226,91,69,0.12); }
 .vb-export { background: none; border: 1.5px solid rgba(58,160,216,0.6); color: var(--ball-blue); padding: 9px 20px; border-radius: 8px; font-size: 13px; cursor: pointer; font-family: 'Noto Sans TC', sans-serif; transition: background 0.15s; }
 .vb-export:hover { background: rgba(58,160,216,0.14); }
+.vb-clear { background: none; border: 1.5px solid rgba(147,174,189,0.4); color: var(--muted); padding: 9px 20px; border-radius: 8px; font-size: 13px; cursor: pointer; font-family: 'Noto Sans TC', sans-serif; transition: background 0.15s; }
+.vb-clear:hover { background: rgba(147,174,189,0.12); }
 `;
 
 const STAT_CONFIG = [
@@ -108,10 +112,33 @@ function calcTotal(p) {
   return p.points + p.attackPoints - p.errors - p.serveErrors;
 }
 
+function loadInitialPlayers() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (err) {
+    console.error("讀取本機儲存的資料失敗", err);
+    return [];
+  }
+}
+
 export default function VolleyballScoreTracker() {
-  const [players, setPlayers] = useState([]);
+  const [players, setPlayers] = useState(loadInitialPlayers);
   const [nameInput, setNameInput] = useState("");
-  const idCounter = useRef(0);
+  const idCounter = useRef(
+    players.reduce((max, p) => Math.max(max, p.id), 0)
+  );
+
+  // 每次 players 資料變動時，自動存到瀏覽器的 localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(players));
+    } catch (err) {
+      console.error("儲存資料到本機失敗", err);
+    }
+  }, [players]);
 
   const addPlayer = () => {
     const name = nameInput.trim();
@@ -153,6 +180,15 @@ export default function VolleyballScoreTracker() {
         serveErrors: 0,
       }))
     );
+  };
+
+  const clearAllData = () => {
+    if (players.length === 0) return;
+    const ok = window.confirm(
+      "確定要清除所有球員與紀錄嗎？這個動作無法復原。"
+    );
+    if (!ok) return;
+    setPlayers([]);
   };
 
   const teamTotal = players.reduce((sum, p) => sum + calcTotal(p), 0);
@@ -211,7 +247,7 @@ export default function VolleyballScoreTracker() {
             <div className="vb-ball" />
             <div>
               <h1 className="vb-title">排球隊得分紀錄板</h1>
-              <div className="vb-subtitle">記錄每位球員的得分、攻擊、失誤與發球失誤</div>
+              <div className="vb-subtitle">記錄每位球員的得分、攻擊、失誤與發球失誤・資料會自動儲存在此裝置</div>
             </div>
           </div>
           <div className="vb-team-total">
@@ -293,6 +329,9 @@ export default function VolleyballScoreTracker() {
             </button>
             <button className="vb-reset" onClick={resetAll}>
               重設全部分數（保留球員）
+            </button>
+            <button className="vb-clear" onClick={clearAllData}>
+              清除所有資料
             </button>
           </div>
         )}
