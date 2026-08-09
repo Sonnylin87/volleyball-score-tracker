@@ -16,10 +16,10 @@
 // 如果不需要這個功能，這個檔案完全不用動，程式會自動偵測並隱藏相關按鈕。
 
 export const firebaseConfig = {
-  apiKey: "",
-  authDomain: "",
-  projectId: "",
-  storageBucket: "",
-  messagingSenderId: "",
-  appId: "",
+  apiKey: "AIzaSyBcGszo3_Vtyek-Kfd-TTiPTSL-xKB9KAo",
+  authDomain: "volleyball-score-e4d36.firebaseapp.com",
+  projectId: "volleyball-score-e4d36",
+  storageBucket: "volleyball-score-e4d36.firebasestorage.app",
+  messagingSenderId: "134394496280",
+  appId: "1:134394496280:web:4545e638e37a21bb504a6d",
 };
