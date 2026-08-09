@@ -1,15 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
-import {
-  doc,
-  setDoc,
-  getDoc,
-  onSnapshot,
-  serverTimestamp,
-} from "firebase/firestore";
-import { db, isFirebaseConfigured } from "./firebase.js";
 
 const STORAGE_KEY = "volleyball-score-tracker-data";
-const ROOM_STORAGE_KEY = "volleyball-score-tracker-room";
 
 const STYLES = `
 @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Noto+Sans+TC:wght@400;500;600;700;900&display=swap');
@@ -126,17 +117,6 @@ const STYLES = `
 .vb-export:hover { background: rgba(58,160,216,0.14); }
 .vb-clear { background: none; border: 1.5px solid rgba(147,174,189,0.4); color: var(--muted); padding: 9px 20px; border-radius: 8px; font-size: 13px; cursor: pointer; font-family: 'Noto Sans TC', sans-serif; transition: background 0.15s; }
 .vb-clear:hover { background: rgba(147,174,189,0.12); }
-
-.vb-room-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; padding: 12px 14px; background: rgba(0,0,0,0.18); border-radius: 10px; border: 1.5px solid rgba(246,243,234,0.1); }
-.vb-room-status { font-size: 12.5px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
-.vb-room-status .live-dot { width: 7px; height: 7px; border-radius: 50%; background: #6bd4a8; flex-shrink: 0; box-shadow: 0 0 6px rgba(107,212,168,0.8); }
-.vb-room-input { background: var(--court-navy-2); border: 1.5px solid rgba(246,243,234,0.18); color: var(--line-white); padding: 7px 10px; border-radius: 6px; font-size: 13px; font-family: inherit; outline: none; width: 110px; letter-spacing: 2px; text-transform: uppercase; }
-.vb-room-input:focus { border-color: var(--ball-blue); }
-.vb-room-btn { background: rgba(58,160,216,0.16); border: 1.5px solid rgba(58,160,216,0.5); color: var(--ball-blue); padding: 7px 14px; border-radius: 6px; font-size: 12.5px; cursor: pointer; font-family: 'Noto Sans TC', sans-serif; transition: background 0.15s; }
-.vb-room-btn:hover { background: rgba(58,160,216,0.28); }
-.vb-room-btn.leave { background: rgba(226,91,69,0.14); border-color: rgba(226,91,69,0.5); color: var(--error-red); }
-.vb-room-btn.leave:hover { background: rgba(226,91,69,0.26); }
-.vb-room-code-badge { font-family: 'Oswald', sans-serif; letter-spacing: 3px; font-weight: 700; font-size: 14px; color: var(--ball-yellow); background: rgba(255,201,74,0.12); padding: 5px 10px; border-radius: 6px; }
 `;
 
 // 得分類統計
@@ -187,149 +167,30 @@ function loadInitialPlayers() {
   }
 }
 
-function generateRoomCode() {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // 去掉容易看錯的 0/O、1/I
-  let code = "";
-  for (let i = 0; i < 6; i++) {
-    code += chars[Math.floor(Math.random() * chars.length)];
-  }
-  return code;
-}
-
 export default function VolleyballScoreTracker() {
   const [players, setPlayers] = useState(loadInitialPlayers);
   const [nameInput, setNameInput] = useState("");
-
-  // 房間（共享同步）相關狀態
-  const [roomCode, setRoomCode] = useState(
-    () => localStorage.getItem(ROOM_STORAGE_KEY) || ""
+  const idCounter = useRef(
+    players.reduce((max, p) => Math.max(max, p.id), 0)
   );
-  const [roomInput, setRoomInput] = useState("");
-  const [roomStatus, setRoomStatus] = useState(""); // 錯誤或提示訊息
-  const skipNextWrite = useRef(false); // 避免同步回音（收到遠端更新時，不要再寫回去）
-  const firebaseReady = isFirebaseConfigured();
 
-  // 本機模式：資料變動時存到瀏覽器 localStorage（沒有加入房間時才會用到）
+  // 每次 players 資料變動時，自動存到瀏覽器的 localStorage
   useEffect(() => {
-    if (roomCode) return; // 房間模式下，資料來源是雲端，不寫入本機
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(players));
     } catch (err) {
       console.error("儲存資料到本機失敗", err);
     }
-  }, [players, roomCode]);
-
-  // 房間模式：訂閱雲端資料即時更新
-  useEffect(() => {
-    if (!roomCode || !firebaseReady) return;
-    localStorage.setItem(ROOM_STORAGE_KEY, roomCode);
-
-    const roomRef = doc(db, "rooms", roomCode);
-    const unsubscribe = onSnapshot(
-      roomRef,
-      (snap) => {
-        if (!snap.exists()) {
-          setRoomStatus("找不到這個房間，可能已被刪除");
-          return;
-        }
-        const data = snap.data();
-        skipNextWrite.current = true;
-        setPlayers(Array.isArray(data.players) ? data.players : []);
-        setRoomStatus("");
-      },
-      (err) => {
-        console.error("同步房間資料失敗", err);
-        setRoomStatus("連線同步發生問題，請檢查網路");
-      }
-    );
-
-    return () => unsubscribe();
-  }, [roomCode, firebaseReady]);
-
-  // 房間模式：本機資料變動時，寫回雲端（跳過剛從雲端收到的那一次，避免無限迴圈）
-  useEffect(() => {
-    if (!roomCode || !firebaseReady) return;
-    if (skipNextWrite.current) {
-      skipNextWrite.current = false;
-      return;
-    }
-    const roomRef = doc(db, "rooms", roomCode);
-    setDoc(
-      roomRef,
-      { players, updatedAt: serverTimestamp() },
-      { merge: true }
-    ).catch((err) => {
-      console.error("寫入房間資料失敗", err);
-      setRoomStatus("儲存到雲端失敗，請檢查網路");
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [players]);
-
-  const createRoom = async () => {
-    if (!firebaseReady) {
-      setRoomStatus("尚未設定共享功能，請參考 README 的設定教學");
-      return;
-    }
-    const code = generateRoomCode();
-    try {
-      await setDoc(doc(db, "rooms", code), {
-        players,
-        updatedAt: serverTimestamp(),
-      });
-      setRoomCode(code);
-      setRoomStatus("");
-    } catch (err) {
-      console.error("建立房間失敗", err);
-      setRoomStatus("建立房間失敗，請檢查網路或 Firebase 設定");
-    }
-  };
-
-  const joinRoom = async () => {
-    if (!firebaseReady) {
-      setRoomStatus("尚未設定共享功能，請參考 README 的設定教學");
-      return;
-    }
-    const code = roomInput.trim().toUpperCase();
-    if (!code) return;
-    try {
-      const snap = await getDoc(doc(db, "rooms", code));
-      if (!snap.exists()) {
-        setRoomStatus("找不到這個房間代碼，請確認是否輸入正確");
-        return;
-      }
-      setRoomCode(code);
-      setRoomInput("");
-      setRoomStatus("");
-    } catch (err) {
-      console.error("加入房間失敗", err);
-      setRoomStatus("加入房間失敗，請檢查網路");
-    }
-  };
-
-  const leaveRoom = () => {
-    setRoomCode("");
-    localStorage.removeItem(ROOM_STORAGE_KEY);
-    setRoomStatus("");
-    setPlayers(loadInitialPlayers()); // 切回本機原本存的資料
-  };
-
-  const copyRoomCode = async () => {
-    try {
-      await navigator.clipboard.writeText(roomCode);
-      setRoomStatus("已複製房間代碼！傳給隊友貼上即可");
-    } catch {
-      setRoomStatus(`房間代碼：${roomCode}`);
-    }
-  };
 
   const addPlayer = () => {
     const name = nameInput.trim();
     if (!name) return;
-    const newId = `${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+    idCounter.current += 1;
     setPlayers((prev) => [
       ...prev,
       {
-        id: newId,
+        id: idCounter.current,
         name,
         ...emptyStats(),
       },
@@ -414,57 +275,13 @@ export default function VolleyballScoreTracker() {
             <div className="vb-ball" />
             <div>
               <h1 className="vb-title">排球隊得分紀錄板</h1>
-              <div className="vb-subtitle">記錄每位球員的得分與失誤數據・可選擇建立房間跟隊友即時共用</div>
+              <div className="vb-subtitle">記錄每位球員的得分與失誤數據・資料會自動儲存在此裝置</div>
             </div>
           </div>
           <div className="vb-team-total">
             <div className="n">{teamTotal}</div>
             <div className="l">全隊總分</div>
           </div>
-        </div>
-
-        <div className="vb-room-bar">
-          {roomCode ? (
-            <>
-              <div className="vb-room-status">
-                <span className="live-dot" />
-                即時共享中
-              </div>
-              <span className="vb-room-code-badge">{roomCode}</span>
-              <button className="vb-room-btn" onClick={copyRoomCode}>
-                複製房間代碼
-              </button>
-              <button className="vb-room-btn leave" onClick={leaveRoom}>
-                離開房間（回本機模式）
-              </button>
-            </>
-          ) : (
-            <>
-              <div className="vb-room-status">本機模式（僅此裝置可見）</div>
-              <button className="vb-room-btn" onClick={createRoom}>
-                建立房間分享
-              </button>
-              <input
-                className="vb-room-input"
-                type="text"
-                placeholder="輸入房間代碼"
-                maxLength={6}
-                value={roomInput}
-                onChange={(e) => setRoomInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") joinRoom();
-                }}
-              />
-              <button className="vb-room-btn" onClick={joinRoom}>
-                加入房間
-              </button>
-            </>
-          )}
-          {roomStatus && (
-            <span style={{ fontSize: "12.5px", color: "var(--muted)" }}>
-              {roomStatus}
-            </span>
-          )}
         </div>
 
         <div className="vb-add-row">
