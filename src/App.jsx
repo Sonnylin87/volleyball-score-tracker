@@ -1,4 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
+import { SCORE_STATS, ERROR_STATS, ALL_STATS, emptyStats, calcTotal } from "./statsConfig.js";
+import AdvancedMode from "./AdvancedMode.jsx";
 
 const STORAGE_KEY = "volleyball-score-tracker-data";
 
@@ -117,41 +119,16 @@ const STYLES = `
 .vb-export:hover { background: rgba(58,160,216,0.14); }
 .vb-clear { background: none; border: 1.5px solid rgba(147,174,189,0.4); color: var(--muted); padding: 9px 20px; border-radius: 8px; font-size: 13px; cursor: pointer; font-family: 'Noto Sans TC', sans-serif; transition: background 0.15s; }
 .vb-clear:hover { background: rgba(147,174,189,0.12); }
+
+.vb-advanced-row { display: flex; justify-content: center; margin-bottom: 22px; }
+.vb-advanced-btn { background: linear-gradient(135deg, rgba(181,138,245,0.18), rgba(58,160,216,0.18)); border: 1.5px solid rgba(181,138,245,0.5); color: var(--line-white); padding: 10px 22px; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: 'Noto Sans TC', sans-serif; transition: filter 0.15s, transform 0.1s; }
+.vb-advanced-btn:hover:not(:disabled) { filter: brightness(1.15); }
+.vb-advanced-btn:active:not(:disabled) { transform: scale(0.98); }
+.vb-advanced-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 `;
 
-// 得分類統計
-const SCORE_STATS = [
-  { key: "points", label: "得分", dot: "dot-point", btn: "point" },
-  { key: "attackPoints", label: "攻擊得分", dot: "dot-attack", btn: "attack" },
-  { key: "servePoints", label: "發球得分", dot: "dot-serve-point", btn: "serve-point" },
-  { key: "blockPoints", label: "攔網得分", dot: "dot-block", btn: "block" },
-];
+// 得分類統計、失誤類統計等設定已搬到 statsConfig.js（主畫面與進階模式共用）
 
-// 失誤類統計
-const ERROR_STATS = [
-  { key: "errors", label: "失誤", dot: "dot-error", btn: "error" },
-  { key: "attackErrors", label: "攻擊失誤", dot: "dot-attack-err", btn: "attack-err" },
-  { key: "serveErrors", label: "發球失誤", dot: "dot-serve-err", btn: "serve-err" },
-  { key: "receptionErrors", label: "接球失誤", dot: "dot-reception", btn: "reception" },
-  { key: "settingErrors", label: "舉球失誤", dot: "dot-set", btn: "set" },
-  { key: "netErrors", label: "觸網失誤", dot: "dot-net", btn: "net" },
-];
-
-const ALL_STATS = [...SCORE_STATS, ...ERROR_STATS];
-
-function emptyStats() {
-  const stats = {};
-  ALL_STATS.forEach((s) => {
-    stats[s.key] = 0;
-  });
-  return stats;
-}
-
-function calcTotal(p) {
-  const scoreSum = SCORE_STATS.reduce((sum, s) => sum + (p[s.key] || 0), 0);
-  const errorSum = ERROR_STATS.reduce((sum, s) => sum + (p[s.key] || 0), 0);
-  return scoreSum - errorSum;
-}
 
 function loadInitialPlayers() {
   try {
@@ -159,8 +136,9 @@ function loadInitialPlayers() {
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    // 補上舊資料可能缺少的新欄位，避免升級後出現 undefined
-    return parsed.map((p) => ({ ...emptyStats(), ...p }));
+    // 補上舊資料可能缺少的新欄位，並把 id 統一轉成字串
+    // （舊版本用數字 id、新版本用文字 id，格式不一致會導致進階模式選不到球員）
+    return parsed.map((p) => ({ ...emptyStats(), ...p, id: String(p.id) }));
   } catch (err) {
     console.error("讀取本機儲存的資料失敗", err);
     return [];
@@ -170,6 +148,7 @@ function loadInitialPlayers() {
 export default function VolleyballScoreTracker() {
   const [players, setPlayers] = useState(loadInitialPlayers);
   const [nameInput, setNameInput] = useState("");
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const idCounter = useRef(
     players.reduce((max, p) => Math.max(max, p.id), 0)
   );
@@ -270,6 +249,14 @@ export default function VolleyballScoreTracker() {
     <div className="vb-root">
       <style>{STYLES}</style>
       <div className="vb-wrap">
+        {showAdvanced ? (
+          <AdvancedMode
+            players={players}
+            setPlayers={setPlayers}
+            onBack={() => setShowAdvanced(false)}
+          />
+        ) : (
+          <>
         <div className="vb-header">
           <div className="vb-title-row">
             <div className="vb-ball" />
@@ -282,6 +269,17 @@ export default function VolleyballScoreTracker() {
             <div className="n">{teamTotal}</div>
             <div className="l">全隊總分</div>
           </div>
+        </div>
+
+        <div className="vb-advanced-row">
+          <button
+            className="vb-advanced-btn"
+            onClick={() => setShowAdvanced(true)}
+            disabled={players.length === 0}
+            title={players.length === 0 ? "請先新增球員" : ""}
+          >
+            🏐 進階功能：輪轉站位分析
+          </button>
         </div>
 
         <div className="vb-add-row">
@@ -392,6 +390,8 @@ export default function VolleyballScoreTracker() {
               清除所有資料
             </button>
           </div>
+        )}
+          </>
         )}
       </div>
     </div>
