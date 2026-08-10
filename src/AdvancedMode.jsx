@@ -66,8 +66,6 @@ const ADV_STYLES = `
 .adv-rotate-btns { display: flex; gap: 12px; margin-bottom: 14px; }
 .adv-rotate-btn { background: rgba(58,160,216,0.16); border: 1.5px solid rgba(58,160,216,0.5); color: var(--ball-blue); padding: 8px 18px; border-radius: 8px; font-size: 13.5px; cursor: pointer; font-family: 'Noto Sans TC', sans-serif; font-weight: 600; }
 .adv-rotate-btn:hover { background: rgba(58,160,216,0.28); }
-.adv-rotate-btn.primary { background: rgba(226,91,69,0.16); border-color: rgba(226,91,69,0.5); color: var(--error-red); }
-.adv-rotate-btn.primary:hover { background: rgba(226,91,69,0.28); }
 
 .adv-court { transition: transform 0.1s; }
 .adv-court.spin-cw { animation: courtSpinCW 420ms ease; }
@@ -196,30 +194,8 @@ export default function AdvancedMode({ players, setPlayers, onBack }) {
     });
   };
 
-  // 順轉＝這一球算對方得分（我方需要輪轉換位），會記錄一筆「對方得分」事件，
-  // 這樣輪轉區位分析（得分率、連續失分）才會把「輸掉的球」也算進去
+  // 順轉／逆轉：單純調整場上球員的站位，不會自動記錄任何得失分
   const rotate = (direction) => {
-    if (direction === "cw") {
-      const serverPlayer = playerById(positions[0]);
-      const teamTotalAfter = players.reduce((sum, p) => sum + calcTotal(p), 0);
-      const { key: rotationKey, label: rotationLabel } = getRotationInfo(positions);
-      const entry = {
-        id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-        ts: Date.now(),
-        playerName: "（對方得分）",
-        statKey: "opponentPoint",
-        statLabel: "對方得分",
-        isScore: false,
-        delta: 1,
-        positionSlot: 1, // 對方得分視為目前發球輪轉（P1）失分
-        rotationKey,
-        rotationLabel,
-        serverName: serverPlayer ? serverPlayer.name : "",
-        teamTotalAfter,
-      };
-      setState((prev) => ({ ...prev, actionLog: [...prev.actionLog, entry] }));
-    }
-
     setSpinDirection(direction);
     window.clearTimeout(spinTimeoutRef.current);
     spinTimeoutRef.current = window.setTimeout(() => setSpinDirection(null), 420);
@@ -571,8 +547,8 @@ export default function AdvancedMode({ players, setPlayers, onBack }) {
         )}
 
         <div className="adv-rotate-btns">
-          <button className="adv-rotate-btn primary" onClick={() => rotate("cw")}>
-            ↻ 順轉（對方得分）
+          <button className="adv-rotate-btn" onClick={() => rotate("cw")}>
+            ↻ 順轉
           </button>
           <button className="adv-rotate-btn" onClick={() => rotate("ccw")}>
             逆轉 ↺
