@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>動作分析（測試版）｜排球隊得分紀錄板</title>
+    <style>
+      :root {
+        --court-navy: #0e2a3f;
+        --court-navy-2: #143a56;
+        --court-navy-3: #1c4b6e;
+        --line-white: #f6f3ea;
+        --ball-yellow: #ffc94a;
+        --ball-blue: #3aa0d8;
+        --error-red: #e25b45;
+        --muted: #93aebd;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: 'Noto Sans TC', 'Inter', sans-serif;
+        background:
+          radial-gradient(circle at 15% 10%, rgba(58, 160, 216, 0.12), transparent 45%),
+          radial-gradient(circle at 85% 90%, rgba(255, 201, 74, 0.1), transparent 45%),
+          var(--court-navy);
+        color: var(--line-white);
+        min-height: 100vh;
+        padding: 28px 18px 60px;
+      }
+      .wrap { max-width: 900px; margin: 0 auto; }
+      .top-bar { display: flex; align-items: center; gap: 14px; margin-bottom: 20px; flex-wrap: wrap; }
+      .back-btn {
+        background: rgba(246, 243, 234, 0.08);
+        border: 1.5px solid rgba(246, 243, 234, 0.2);
+        color: var(--line-white);
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-size: 13px;
+        cursor: pointer;
+        text-decoration: none;
+        font-family: inherit;
+      }
+      .back-btn:hover { background: rgba(246, 243, 234, 0.16); }
+      h1 { font-size: 22px; margin: 0; }
+      .subtitle { color: var(--muted); font-size: 13px; margin-top: 4px; }
+      .badge {
+        display: inline-block;
+        font-size: 11px;
+        letter-spacing: 1px;
+        color: var(--ball-yellow);
+        border: 1px solid rgba(255, 201, 74, 0.4);
+        background: rgba(255, 201, 74, 0.1);
+        padding: 2px 8px;
+        border-radius: 6px;
+        margin-left: 8px;
+        vertical-align: middle;
+      }
+      .panel {
+        background: linear-gradient(160deg, var(--court-navy-2), var(--court-navy-3));
+        border: 1.5px solid rgba(246, 243, 234, 0.14);
+        border-radius: 14px;
+        padding: 20px;
+        margin-bottom: 20px;
+      }
+      .panel-title { font-size: 12px; letter-spacing: 1.5px; color: var(--muted); text-transform: uppercase; margin-bottom: 14px; }
+      .field-row { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 14px; }
+      .field { flex: 1; min-width: 140px; }
+      label { display: block; font-size: 12.5px; color: var(--muted); margin-bottom: 5px; }
+      input[type="number"], select {
+        width: 100%;
+        background: var(--court-navy-2);
+        border: 1.5px solid rgba(246, 243, 234, 0.18);
+        color: var(--line-white);
+        padding: 9px 10px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-family: inherit;
+      }
+      input[type="file"] {
+        width: 100%;
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .hint { font-size: 11.5px; color: var(--muted); margin-top: 4px; }
+      .submit-btn {
+        background: var(--ball-yellow);
+        color: var(--court-navy);
+        border: none;
+        padding: 11px 26px;
+        border-radius: 8px;
+        font-weight: 700;
+        font-size: 14px;
+        cursor: pointer;
+        font-family: inherit;
+      }
+      .submit-btn:hover:not(:disabled) { filter: brightness(1.08); }
+      .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+      .status-line { font-size: 13px; color: var(--muted); margin-top: 12px; min-height: 18px; }
+      .status-line.error { color: var(--error-red); }
+      .status-line.ok { color: #6bd4a8; }
+      .stat-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 10px; }
+      .stat-table th { text-align: left; color: var(--muted); font-weight: 500; padding: 6px 8px; border-bottom: 1px solid rgba(246, 243, 234, 0.14); }
+      .stat-table td { padding: 6px 8px; border-bottom: 1px solid rgba(246, 243, 234, 0.06); font-family: 'Oswald', sans-serif; }
+      .limb-block { margin-bottom: 22px; }
+      .limb-title { font-size: 14px; font-weight: 700; color: var(--ball-yellow); margin-bottom: 8px; }
+      .limb-chart { width: 100%; max-width: 640px; border-radius: 8px; border: 1px solid rgba(246, 243, 234, 0.14); display: block; }
+      .meta-line { font-size: 13px; color: var(--muted); margin-bottom: 16px; }
+      .csv-btn {
+        background: none;
+        border: 1.5px solid rgba(58, 160, 216, 0.6);
+        color: var(--ball-blue);
+        padding: 9px 20px;
+        border-radius: 8px;
+        font-size: 13px;
+        cursor: pointer;
+        font-family: inherit;
+      }
+      .csv-btn:hover { background: rgba(58, 160, 216, 0.14); }
+      .config-note {
+        font-size: 12px;
+        color: var(--muted);
+        background: rgba(0, 0, 0, 0.2);
+        border: 1px dashed rgba(246, 243, 234, 0.2);
+        border-radius: 8px;
+        padding: 10px 12px;
+        margin-bottom: 16px;
+      }
+      code { color: var(--ball-yellow); }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="top-bar">
+        <a class="back-btn" href="./">← 回到記分板</a>
+        <div>
+          <h1>動作分析<span class="badge">測試版</span></h1>
+          <div class="subtitle">上傳排球動作影片，分析手腕／腳踝的移動軌跡與擺動節奏</div>
+        </div>
+      </div>
+
+      <div class="config-note" id="config-note">
+        ⚠️ 後端網址尚未設定。請把下方 <code>pose-analysis.html</code> 的
+        <code>BACKEND_URL</code> 改成你部署到 Render 的網址（例如
+        <code>https://volleyball-pose-backend.onrender.com</code>），存檔後這個畫面才能實際上傳分析。
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">上傳影片</div>
+        <form id="analyze-form">
+          <div class="field-row">
+            <div class="field" style="flex-basis: 100%;">
+              <label for="video-input">影片檔案（建議 mp4）</label>
+              <input type="file" id="video-input" name="video" accept="video/*" required />
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label for="skip-input">跳幀（skip）</label>
+              <input type="number" id="skip-input" min="1" step="1" value="1" />
+              <div class="hint">數字越大分析越快，取樣越稀疏</div>
+            </div>
+            <div class="field">
+              <label for="scale-input">縮放比例（scale）</label>
+              <input type="number" id="scale-input" min="0.1" max="1" step="0.1" value="1" />
+              <div class="hint">畫面縮小可加快分析速度</div>
+            </div>
+            <div class="field">
+              <label for="model-input">模型複雜度（model_complexity）</label>
+              <select id="model-input">
+                <option value="0" selected>0（最快）</option>
+                <option value="1">1</option>
+                <option value="2">2（最準）</option>
+              </select>
+            </div>
+          </div>
+          <button type="submit" class="submit-btn" id="submit-btn">開始分析</button>
+          <div class="status-line" id="status-line"></div>
+        </form>
+      </div>
+
+      <div class="panel" id="result-panel" style="display: none;">
+        <div class="panel-title">分析結果</div>
+        <div class="meta-line" id="meta-line"></div>
+        <div id="limb-results"></div>
+        <button class="csv-btn" id="csv-btn" style="display: none;">⬇ 下載逐幀座標 CSV</button>
+      </div>
+    </div>
+
+    <script>
+      // 後端 API 網址：部署到 Render 後，把下面這一行換成你自己的網址。
+      // 例如：const BACKEND_URL = "https://volleyball-pose-backend.onrender.com";
+      const BACKEND_URL = "https://your-backend.onrender.com"; // TODO: 換成實際部署網址
+
+      const form = document.getElementById("analyze-form");
+      const submitBtn = document.getElementById("submit-btn");
+      const statusLine = document.getElementById("status-line");
+      const resultPanel = document.getElementById("result-panel");
+      const metaLine = document.getElementById("meta-line");
+      const limbResults = document.getElementById("limb-results");
+      const csvBtn = document.getElementById("csv-btn");
+      const configNote = document.getElementById("config-note");
+
+      if (!BACKEND_URL || BACKEND_URL.includes("your-backend")) {
+        configNote.style.display = "block";
+      } else {
+        configNote.style.display = "none";
+      }
+
+      let lastCsv = null;
+      let lastFilename = "pose-analysis.csv";
+
+      function setStatus(text, kind) {
+        statusLine.textContent = text;
+        statusLine.className = "status-line" + (kind ? " " + kind : "");
+      }
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const fileInput = document.getElementById("video-input");
+        const file = fileInput.files[0];
+        if (!file) {
+          setStatus("請先選擇影片檔案", "error");
+          return;
+        }
+
+        const skip = document.getElementById("skip-input").value || "1";
+        const scale = document.getElementById("scale-input").value || "1";
+        const modelComplexity = document.getElementById("model-input").value || "0";
+
+        const formData = new FormData();
+        formData.append("video", file);
+        formData.append("skip", skip);
+        formData.append("scale", scale);
+        formData.append("model_complexity", modelComplexity);
+
+        submitBtn.disabled = true;
+        resultPanel.style.display = "none";
+        setStatus("上傳並分析中，免費方案的後端若剛睡醒可能需要等待約 30~60 秒⋯⋯");
+
+        try {
+          const res = await fetch(`${BACKEND_URL}/analyze`, {
+            method: "POST",
+            body: formData,
+          });
+          const data = await res.json();
+
+          if (!res.ok) {
+            setStatus(data.error || `分析失敗（HTTP ${res.status}）`, "error");
+            return;
+          }
+
+          renderResult(data);
+          setStatus("分析完成", "ok");
+        } catch (err) {
+          setStatus(`無法連線到後端：${err.message}`, "error");
+        } finally {
+          submitBtn.disabled = false;
+        }
+      });
+
+      function renderResult(data) {
+        metaLine.textContent =
+          `檔案：${data.video_filename}　·　FPS：${data.fps?.toFixed?.(1) ?? data.fps}　·　` +
+          `總幀數：${data.total_frames}　·　取樣幀數：${data.sampled_frames}　·　` +
+          `參數：skip=${data.params.skip} scale=${data.params.scale} model_complexity=${data.params.model_complexity}`;
+
+        limbResults.innerHTML = "";
+        (data.stats || []).forEach((s) => {
+          const block = document.createElement("div");
+          block.className = "limb-block";
+
+          const title = document.createElement("div");
+          title.className = "limb-title";
+          title.textContent = s.limb_display;
+          block.appendChild(title);
+
+          const table = document.createElement("table");
+          table.className = "stat-table";
+          const rows = [
+            ["最大 X", s.max_x],
+            ["最小 X", s.min_x],
+            ["平均 X", s.mean_x],
+            ["標準差 X", s.std_x],
+            ["峰值數量", s.peak_count],
+            ["峰值間隔標準差", s.peak_interval_std],
+          ];
+          table.innerHTML =
+            "<tbody>" +
+            rows
+              .map(
+                ([label, value]) =>
+                  `<tr><th>${label}</th><td>${
+                    typeof value === "number" ? value.toFixed(2) : value ?? "-"
+                  }</td></tr>`
+              )
+              .join("") +
+            "</tbody>";
+          block.appendChild(table);
+
+          if (s.chart_png_base64) {
+            const img = document.createElement("img");
+            img.className = "limb-chart";
+            img.alt = `${s.limb_display} 移動軌跡圖`;
+            img.src = `data:image/png;base64,${s.chart_png_base64}`;
+            block.appendChild(img);
+          }
+
+          limbResults.appendChild(block);
+        });
+
+        if (data.csv) {
+          lastCsv = data.csv;
+          const base = (data.video_filename || "pose-analysis").replace(/\.[^.]+$/, "");
+          lastFilename = `${base}_座標資料.csv`;
+          csvBtn.style.display = "inline-block";
+        } else {
+          csvBtn.style.display = "none";
+        }
+
+        resultPanel.style.display = "block";
+      }
+
+      csvBtn.addEventListener("click", () => {
+        if (!lastCsv) return;
+        const blob = new Blob(["﻿" + lastCsv], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = lastFilename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      });
+    </script>
+  </body>
+</html>

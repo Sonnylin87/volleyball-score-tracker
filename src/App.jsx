@@ -120,11 +120,12 @@ const STYLES = `
 .vb-clear { background: none; border: 1.5px solid rgba(147,174,189,0.4); color: var(--muted); padding: 9px 20px; border-radius: 8px; font-size: 13px; cursor: pointer; font-family: 'Noto Sans TC', sans-serif; transition: background 0.15s; }
 .vb-clear:hover { background: rgba(147,174,189,0.12); }
 
-.vb-advanced-row { display: flex; justify-content: center; margin-bottom: 22px; }
-.vb-advanced-btn { background: linear-gradient(135deg, rgba(181,138,245,0.18), rgba(58,160,216,0.18)); border: 1.5px solid rgba(181,138,245,0.5); color: var(--line-white); padding: 10px 22px; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: 'Noto Sans TC', sans-serif; transition: filter 0.15s, transform 0.1s; }
+.vb-advanced-row { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; margin-bottom: 22px; }
+.vb-advanced-btn { background: linear-gradient(135deg, rgba(181,138,245,0.18), rgba(58,160,216,0.18)); border: 1.5px solid rgba(181,138,245,0.5); color: var(--line-white); padding: 10px 22px; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: 'Noto Sans TC', sans-serif; transition: filter 0.15s, transform 0.1s; text-decoration: none; display: inline-flex; align-items: center; }
 .vb-advanced-btn:hover:not(:disabled) { filter: brightness(1.15); }
 .vb-advanced-btn:active:not(:disabled) { transform: scale(0.98); }
 .vb-advanced-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.vb-pose-btn { background: linear-gradient(135deg, rgba(255,201,74,0.18), rgba(58,160,216,0.18)); border-color: rgba(255,201,74,0.5); }
 `;
 
 // 得分類統計、失誤類統計等設定已搬到 statsConfig.js（主畫面與進階模式共用）
@@ -280,6 +281,14 @@ export default function VolleyballScoreTracker() {
           >
             🏐 進階功能：輪轉站位分析
           </button>
+          <a
+            className="vb-advanced-btn vb-pose-btn"
+            href={`${import.meta.env.BASE_URL}pose-analysis.html`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            🎥 動作分析（測試版）
+          </a>
         </div>
 
         <div className="vb-add-row">
