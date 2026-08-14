@@ -88,3 +88,23 @@ No CSS files or CSS-in-JS library — each component defines its styles as a tem
 string (`STYLES` in `App.jsx`, `ADV_STYLES` in `AdvancedMode.jsx`) injected via a `<style>` tag,
 using a shared CSS custom-property palette (`--court-navy`, `--ball-yellow`, `--error-red`, etc.)
 defined on `.vb-root`. Class names are prefixed `vb-` (basic mode) or `adv-` (advanced mode).
+
+## 動作分析（測試版）
+
+An optional pose-analysis feature lives outside the Vite/React app proper, in two parts that
+deploy and version independently of everything above:
+
+- **`backend/`** — a separate Flask + mediapipe API (not part of the npm build). Accepts an
+  uploaded video, runs pose detection on wrist/ankle landmarks, and returns movement stats,
+  peak/trough charts (base64 PNG), and a per-frame CSV as JSON. Deploys on its own to Render
+  (`render.yaml` / `Procfile`, `gunicorn app:app`) — see `backend/README.md` for local run and
+  deploy steps. It is not built, started, or deployed by anything in `package.json` or
+  `.github/workflows/deploy.yml`; treat it as its own project that happens to live in this repo.
+- **`public/pose-analysis.html`** — a standalone static page (plain HTML/CSS/vanilla JS, no
+  React, no build step) that uploads a video to the backend's `/analyze` endpoint and renders the
+  results. Vite copies anything under `public/` to `dist/` unchanged, so this ships to GitHub
+  Pages alongside the SPA but is never bundled or imported by `src/`. It hardcodes the backend
+  URL in a `BACKEND_URL` constant at the top of its `<script>` — update that after each backend
+  redeploy (e.g. Render's free tier URL). `App.jsx` links to it via
+  `` `${import.meta.env.BASE_URL}pose-analysis.html` `` so the link resolves correctly under the
+  GitHub Pages subpath, opened in a new tab.
